@@ -1,0 +1,94 @@
+// Слепой пикер: случайный выбор версии с помощью «колеса».
+// Логика вращения вынесена в кастомный хук usePicker (app/hooks).
+
+import { Link } from "react-router";
+import type { Route } from "./+types/picker";
+import { usePicker } from "~/hooks/usePicker";
+
+export function meta({}: Route.MetaArgs) {
+  return [{ title: "Слепой пикер — Манчкин-пикер" }];
+}
+
+// цвета секторов колеса — палитра тематик
+const COLORS = ["#D9A441", "#9C4A4A", "#B85C38", "#6E8A5A", "#4A7E8C", "#8A7355"];
+
+export default function Picker() {
+  // вся логика колеса живёт в хуке
+  const { rotation, spinning, result, spin } = usePicker();
+
+  // сектора колеса рисуем через conic-gradient
+  const gradient = `conic-gradient(${COLORS.map((c, i) => {
+    const from = i * 60;
+    const to = (i + 1) * 60;
+    return `${c} ${from}deg ${to}deg`;
+  }).join(", ")})`;
+
+  return (
+    <div className="container mx-auto px-4 py-10 text-center">
+      <h1 className="text-3xl font-bold">Слепой пикер</h1>
+      <p className="text-muted mt-2">Крутите колесо — и спор окончен</p>
+
+      {/* колесо */}
+      <div className="relative w-80 h-80 mx-auto mt-8">
+        {/* указатель */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[18px] border-l-transparent border-r-transparent border-t-accent" />
+        {/* сам круг */}
+        <div
+          className="w-full h-full rounded-full border-4 border-white shadow-md"
+          style={{
+            background: gradient,
+            transform: `rotate(${rotation}deg)`,
+            transition: "transform 3s cubic-bezier(0.2, 0.8, 0.2, 1)",
+          }}
+        >
+          {/* разделители секторов */}
+          {[60, 120, 180, 240, 300].map((a) => (
+            <div
+              key={a}
+              className="absolute left-1/2 top-1/2 w-[49%] h-0.5 bg-white origin-left"
+              style={{ transform: `rotate(${a}deg)` }}
+            />
+          ))}
+        </div>
+
+        {/* центральная кнопка «крутить» */}
+        <button
+          onClick={spin}
+          disabled={spinning}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-white border border-line font-bold text-accent text-sm shadow hover:bg-soft disabled:opacity-60"
+        >
+          {spinning ? "..." : "КРУТИТЬ"}
+        </button>
+      </div>
+
+      {/* результат розыгрыша */}
+      {result ? (
+        <div className="max-w-xl mx-auto mt-8 bg-white border border-line rounded-lg p-5 flex items-center gap-4 text-left">
+          <img src={result.photo} alt={result.name} className="w-20 h-20 object-contain" />
+          <div className="flex-1">
+            <p className="text-xs text-muted">Вам выпало:</p>
+            <p className="text-lg font-bold">{result.name}</p>
+            <p className="text-xs text-muted mt-0.5">
+              {result.players} · {result.time} · сложность: {result.difficulty}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button onClick={spin} className="px-4 h-9 rounded-md bg-white border border-muted/50 text-xs hover:bg-soft">
+              Ещё раз
+            </button>
+            <Link
+              to={`/catalog/${result.slug}`}
+              className="px-4 h-9 rounded-md bg-accent text-white text-xs font-bold grid place-items-center hover:bg-accent/90"
+            >
+              Играть!
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <p className="text-muted text-sm mt-8">
+          Выпавшая версия выбирается случайно из 6 — с учётом фильтров каталога
+        </p>
+      )}
+    </div>
+  );
+}
